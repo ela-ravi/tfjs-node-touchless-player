@@ -10,6 +10,9 @@ const vod = document.getElementById("video") as HTMLVideoElement;
 const live = document.getElementById("mirror") as HTMLVideoElement;
 // TODO: Check for Canvas support on curremt user browser
 const canvas = document.getElementById("output") as HTMLCanvasElement;
+const ctx = canvas.getContext("2d");
+const audioClick = document.getElementById("audio-click") as HTMLAudioElement;
+
 // const select = document.getElementById("videos") as HTMLSelectElement;
 // select.addEventListener("change", (e: Event) => {
 //     const target = e.target as HTMLSelectElement;
@@ -20,8 +23,6 @@ const canvas = document.getElementById("output") as HTMLCanvasElement;
 //         vod.load(); // Reload the video element to reflect the new source
 //     }
 // })
-const ctx = canvas.getContext("2d");
-
 const model: handPoseDetection.SupportedModels = handPoseDetection.SupportedModels.MediaPipeHands;
 
 const modelConfig: handPoseDetection.MediaPipeHandsTfjsModelConfig = {
@@ -205,6 +206,7 @@ function getGesture(landmarks: handPoseDetection.Keypoint[], handedness: handPos
 
 function triggerAction(gesture: any) {
     console.log(`Gesture detected: ${gesture}`);
+    audioClick.play(); // To inform user that a gesture is detected or an action is triggered (can be null gesture / action as well)
     switch (gesture) {
         case "play":
             vod.play();
