@@ -12,7 +12,22 @@ const FINGER_LOOKUP_INDICES = {
     ringFinger: [0, 13, 14, 15, 16],
     pinky: [0, 17, 18, 19, 20],
 } as const;
+// Our own enum
+enum FINGER_ENUM {
+    thumb = "thumb",
+    indexFinger = "indexFinger",
+    middleFinger = "middleFinger",
+    ringFinger = "ringFinger",
+    pinky = "pinky",
+}
 
 type FINGER = keyof typeof FINGER_LOOKUP_INDICES;
+type DIRECTION = {
+    up: boolean,
+    down: boolean,
+    left: boolean,
+    right: boolean
+}
 
-export { MEDIAPIPE_CONNECTED_KEYPOINTS_PAIRS, FINGER_LOOKUP_INDICES, FINGER }
+
+export { MEDIAPIPE_CONNECTED_KEYPOINTS_PAIRS, FINGER_LOOKUP_INDICES, FINGER, FINGER_ENUM, DIRECTION }

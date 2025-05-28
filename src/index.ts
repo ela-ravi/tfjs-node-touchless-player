@@ -1,13 +1,11 @@
 import * as handPoseDetection from "@tensorflow-models/hand-pose-detection";
-// import { Camera } from "@mediapipe/camera_utils";
-import * as handpose from "@tensorflow-models/handpose";
 import "@tensorflow/tfjs-backend-webgl";
-import { FINGER, FINGER_LOOKUP_INDICES, MEDIAPIPE_CONNECTED_KEYPOINTS_PAIRS } from "./utils";
+import { FINGER, FINGER_ENUM, MEDIAPIPE_CONNECTED_KEYPOINTS_PAIRS } from "./utils";
 import { FingersClip } from "./fingersClip";
 
 let lastGesture = null;
 let gestureStart = 0;
-const POINTS_PER_FINGER = 4;
+
 const vod = document.getElementById("video") as HTMLVideoElement;
 const live = document.getElementById("mirror") as HTMLVideoElement;
 // TODO: Check for Canvas support on curremt user browser
@@ -80,102 +78,89 @@ function getGesture(landmarks: handPoseDetection.Keypoint[]) {
 
     const thumbTip = landmarks[4];
     const pinkyMCP = landmarks[17];
-    const fourFingersClip = new FingersClip(landmarks);
+    const fingersClip = new FingersClip(landmarks);
 
-    // Move this isFingerStraight to fingersClip and make use of it from there.
-    const isFingerStraight = (fingerPoints: handPoseDetection.Keypoint[]): boolean => {
-        // Implement is StraightLeft, isStraightRight, isStraightDown
-        let isStraightUp = fingerPoints.every((currentPoint, index, array) => {
-            if (index < array.length - 1) {
-                const nextPoint = array[index + 1];
-                return currentPoint.y > nextPoint.y;
-            }
-            return true;  // The last point always passes
-        })
-        return isStraightUp;
-    }
     const isOpenPalm = () => {
-
-        const thumbFingerPoints = FINGER_LOOKUP_INDICES.thumb.map(index => landmarks[index]);
-        if (!isFingerStraight(thumbFingerPoints) || fourFingersClip.contains(thumbTip)) return false;
-
-        const indexFingerPoints = FINGER_LOOKUP_INDICES.indexFinger.map(index => landmarks[index]);
-        if (!isFingerStraight(indexFingerPoints)) return false;
-
-
-        const middleFingerPoints = FINGER_LOOKUP_INDICES.middleFinger.map(index => landmarks[index]);
-        if (!isFingerStraight(middleFingerPoints)) return false;
-
-
-        const ringFingerPoints = FINGER_LOOKUP_INDICES.ringFinger.map(index => landmarks[index]);
-        if (!isFingerStraight(ringFingerPoints)) return false;
-
-
-        const pinkyFingerPoints = FINGER_LOOKUP_INDICES.pinky.map(index => landmarks[index]);
-        return isFingerStraight(pinkyFingerPoints);
-
+        // TODO: try with array.every
+        console.log("isOpenPalm:");
+        // Thumb
+        if (!fingersClip.isFingerStraight(FINGER_ENUM.thumb)?.up || fingersClip.containedInFourFingers(thumbTip)) return false;
+        console.log("Thumb Straight up");
+        // Index Finger
+        if (!fingersClip.isFingerStraight(FINGER_ENUM.indexFinger)?.up) return false;
+        console.log("Index Straight up");
+        // Middle Finger
+        if (!fingersClip.isFingerStraight(FINGER_ENUM.middleFinger)?.up) return false;
+        console.log("Middle Straight up");
+        // Ring Finger
+        if (!fingersClip.isFingerStraight(FINGER_ENUM.ringFinger)?.up) return false;
+        console.log("Ring Straight up");
+        // Pinky Finger
+        const p = fingersClip.isFingerStraight(FINGER_ENUM.pinky)?.up;
+        if (p)
+            console.log("Pinky Straight up");
+        return p;
 
     }
     const isClosedFist = () => {
         // Check if fourFingers curled and thumb curled
-        const isFourFingersCurled = fourFingersClip.isFourFingersCurled();
-        const isThumbCurled = fourFingersClip.contains(thumbTip);
-
-        return isFourFingersCurled && isThumbCurled;
+        const isFourFingersCurledDown = fingersClip.isFourFingersCurledDown();
+        const isThumbCurled = fingersClip.containedInFourFingers(thumbTip);
+        console.log("isClosedFist: ", isFourFingersCurledDown, isThumbCurled);
+        return isFourFingersCurledDown && isThumbCurled;
     }
     const isThumbsUp = () => {
-        const isFourFingersCurled = fourFingersClip.isFourFingersCurled();
-        console.log("isFourFingersCurled:", isFourFingersCurled);
-        const boundingBox = fourFingersClip.getBoundingBox();
-        const isThumUp =
-            boundingBox
-            && !fourFingersClip.contains(thumbTip)
-            && thumbTip.y < boundingBox.top.y;
-        return isFourFingersCurled && isThumUp;
+        const isFourFingersCurledLeft = fingersClip.isFourFingersCurledLeft();
+        const isThumbUp = fingersClip.isFingerStraight(FINGER_ENUM.thumb)?.up && !fingersClip.containedInFourFingers(thumbTip);
+        console.log("isThumbsUp: ", isFourFingersCurledLeft, isThumbUp);
+        return isFourFingersCurledLeft && isThumbUp;
     }
+
     const isThumbsDown = () => {
-        const isFourFingersCurled = fourFingersClip.isFourFingersCurled();
-        const boundingBox = fourFingersClip.getBoundingBox();
-        const isThumDown =
-            boundingBox
-            && !fourFingersClip.contains(thumbTip)
-            && thumbTip.y > boundingBox.top.y
-            && thumbTip.y > pinkyMCP.y
-        return isFourFingersCurled && isThumDown;
+        const isFourFingersCurledLeft = fingersClip.isFourFingersCurledLeft();
+        const isThumbDown = fingersClip.isFingerStraight(FINGER_ENUM.thumb)?.down && !fingersClip.containedInFourFingers(thumbTip)
+        console.log("isThumbsDown: ", isFourFingersCurledLeft, isThumbDown);
+        return isFourFingersCurledLeft && isThumbDown;
     }
     const isPointLeft = () => {
-        const threeFingers = Object.keys(FINGER_LOOKUP_INDICES).filter(finger => !(["thumb", "indexFinger"].includes(finger)));
-        const threeFingersCurled = threeFingers.every((finger) => {
-            return fourFingersClip.isFingerCurled(finger as FINGER)
+        const threeFingers = [FINGER_ENUM.middleFinger, FINGER_ENUM.ringFinger, FINGER_ENUM.pinky];
+        const isThreeFingersCurled = threeFingers.every((finger) => {
+            return fingersClip.fingerCurledDirections(finger as FINGER)?.left
         });
-
-        const isIndexPointLeft = isFingerStraight(FINGER_LOOKUP_INDICES.indexFinger.map(index => landmarks[index]))
-
+        const isIndexPointLeft = fingersClip.isFingerStraight(FINGER_ENUM.indexFinger)?.left;
+        console.log("isPointLeft: ", isThreeFingersCurled, isIndexPointLeft);
+        return isThreeFingersCurled && isIndexPointLeft;
     }
-    // const isThumbUp =
-    //     thumbTip.y < palmBase.y && Math.abs(indexTip.x - thumbTip.x) > 40;
-    // const isThumbDown =
-    //     thumbTip.y > palmBase.y && Math.abs(indexTip.x - thumbTip.x) > 40;
-    // const isPointRight = indexTip.x > palmBase.x + 40 && middleTip.y > palmBase.y;
-    // const isPointLeft = indexTip.x < palmBase.x - 40 && middleTip.y > palmBase.y;
+
+    const isPointRight = () => {
+        const threeFingers = [FINGER_ENUM.middleFinger, FINGER_ENUM.ringFinger, FINGER_ENUM.pinky];
+        const isThreeFingersCurled = threeFingers.every((finger) => {
+            return fingersClip.fingerCurledDirections(finger as FINGER)?.right
+        });
+        const isIndexPointRight = fingersClip.isFingerStraight(FINGER_ENUM.indexFinger)?.right;
+        console.log("isPointRight: ", isThreeFingersCurled, isIndexPointRight);
+        return isThreeFingersCurled && isIndexPointRight;
+    }
+
     const openPalm = isOpenPalm();
     const closedFist = isClosedFist();
     const thumbsUp = isThumbsUp();
     const thumbsDown = isThumbsDown();
-    console.log("isClosedFist:", closedFist);
+    const pointLeft = isPointLeft();
+    const pointRight = isPointRight();
 
     if (openPalm) return "play";
     if (closedFist) return "pause";
     if (thumbsUp) return "volume-up";
     if (thumbsDown) return "volume-down";
-    // if (isPointRight) return "forward";
-    // if (isPointLeft) return "backward";
+    if (pointRight) return "forward";
+    if (pointLeft) return "backward";
 
     return null;
 }
 
 function triggerAction(gesture: any) {
-    // console.log(`Gesture detected: ${gesture}`);
+    console.log(`Gesture detected: ${gesture}`);
     switch (gesture) {
         case "play":
             vod.play();
@@ -193,7 +178,7 @@ function triggerAction(gesture: any) {
             vod.currentTime += 5;
             break;
         case "backward":
-            vod.currentTime - +5;
+            vod.currentTime -= 5;
             break;
     }
 }

@@ -8,17 +8,17 @@
  * - contains
  * - isFront
  */
+//  TODO: Work on handposes that should not work and initmate user to change like curled left all fingers (user might test feature to move backward) (Try to add threhold to indexfinger points x difference so that if its satisfied, go for backward only when index is straight left() )
 import * as handPoseDetection from "@tensorflow-models/hand-pose-detection";
-import { FINGER_LOOKUP_INDICES, FINGER } from "./utils";
+import { FINGER_LOOKUP_INDICES, FINGER, FINGER_ENUM, DIRECTION } from "./utils";
 
 export class FingersClip {
     keyPoints: handPoseDetection.Keypoint[];
-    fingersCurled: boolean;
 
     constructor(keyPoints: handPoseDetection.Keypoint[]) {
-        this.fingersCurled = false;
         this.keyPoints = keyPoints;
     }
+
     isFront(): boolean {
         if (this.keyPoints.length <= 0) {
             console.error("There are no predictions by handpose model. Please check if modal is loaded or not");
@@ -31,23 +31,117 @@ export class FingersClip {
         }
         return false;
     }
-    isFingerCurled(finger: FINGER) {
-        const fingerIndeces = FINGER_LOOKUP_INDICES[finger as FINGER];
-        console.log(`${finger}:`, (this.keyPoints[fingerIndeces[2]].y < this.keyPoints[fingerIndeces[3]].y), (this.keyPoints[fingerIndeces[3]].y < this.keyPoints[fingerIndeces[4]].y));
-        const isCurledDownwards = ((this.keyPoints[fingerIndeces[2]].y < this.keyPoints[fingerIndeces[3]].y)
-            && (this.keyPoints[fingerIndeces[3]].y < this.keyPoints[fingerIndeces[4]].y))
-        const isCurledLeftSidewards = ((this.keyPoints[fingerIndeces[2]].y < this.keyPoints[fingerIndeces[3]].y)
-            && (this.keyPoints[fingerIndeces[2]].y < this.keyPoints[fingerIndeces[4]].y))
+
+    isFingerStraight(finger: FINGER): DIRECTION | null {
+        // TODO: Solve when a finger is 45% eg: left up 45% etc..,
+        if (this.keyPoints.length <= 0) {
+            console.error("There are no predictions by handpose model. Please check if modal is loaded or not")
+            return null; // TODO throw error
+        }
+        const fingerIndices = FINGER_LOOKUP_INDICES[finger as FINGER];
+        const fingerPoints = fingerIndices.map(index => this.keyPoints[index]);
+
+        // Straight UP
+        const isStraightUp = fingerPoints.every((currentPoint, index, array) => {
+            if (index < array.length - 1) {
+                const nextPoint = array[index + 1];
+                return currentPoint.y > nextPoint.y;
+            }
+            return true;  // The last point always passes
+        })
+
+        // Straight Down
+        const isStraightDown = fingerPoints.every((currentPoint, index, array) => {
+            if (index < array.length - 1) {
+                const nextPoint = array[index + 1];
+                return currentPoint.y < nextPoint.y;
+            }
+            return true;  // The last point always passes
+        })
+
+        // Straight Left
+        const isStraightLeft = fingerPoints.every((currentPoint, index, array) => {
+            if (index < array.length - 1) {
+                const nextPoint = array[index + 1];
+                return currentPoint.x > nextPoint.x;
+            }
+            return true;  // The last point always passes
+        })
+
+        // Straight Right
+        const isStraightRight = fingerPoints.every((currentPoint, index, array) => {
+            if (index < array.length - 1) {
+                const nextPoint = array[index + 1];
+                return currentPoint.x < nextPoint.x;
+            }
+            return true;  // The last point always passes
+        })
+
+        return {
+            up: isStraightUp,
+            down: isStraightDown,
+            left: isStraightLeft,
+            right: isStraightRight
+        }
+
+    }
+
+    private isFingerCurledDown(pip: handPoseDetection.Keypoint, dip: handPoseDetection.Keypoint, tip: handPoseDetection.Keypoint) {
+        // pip.y < dip.y < tip.y;
+        // differences between pip, dip and tip X's should be < threshold(15)
+        const curledDownXThreshold = 15;
+        const isXSatisfied = (Math.abs(pip.x - dip.x) < curledDownXThreshold) && (Math.abs(dip.x - tip.x) < curledDownXThreshold);
+        const isYSatisfied = (pip.y < dip.y) && (dip.y < tip.y);
+        return isXSatisfied && isYSatisfied;
+    }
+    private isFingerCurledLeft(pip: handPoseDetection.Keypoint, dip: handPoseDetection.Keypoint, tip: handPoseDetection.Keypoint) {
+        // pip.x < dip.x < tip.x
+        // differences between pip, dip and tip Y's should be < threshold(15)
+        const curledLeftYThreshold = 15;
+        const isXSatisfied = (pip.x < dip.x) && (dip.x < tip.x);
+        const isYSatisfied = (Math.abs(pip.y - dip.y) < curledLeftYThreshold) && (Math.abs(dip.y - tip.y) < curledLeftYThreshold);
+        return isXSatisfied && isYSatisfied;
+    }
+    private isFingerCurledRight(pip: handPoseDetection.Keypoint, dip: handPoseDetection.Keypoint, tip: handPoseDetection.Keypoint) {
+        // pip.x > dip.x > tip.x
+        // differences between pip, dip and tip Y's should be < threshold(15)
+        const curledLeftYThreshold = 15;
+        const isXSatisfied = (pip.x > dip.x) && (dip.x > tip.x);
+        const isYSatisfied = (Math.abs(pip.y - dip.y) < curledLeftYThreshold) && (Math.abs(dip.y - tip.y) < curledLeftYThreshold);
+        return isXSatisfied && isYSatisfied;
+    }
+
+    fingerCurledDirections(finger: FINGER): DIRECTION | null {
+        if (this.keyPoints.length <= 0) {
+            console.error("There are no predictions by handpose model. Please check if modal is loaded or not")
+            return null; // TODO throw error
+        }
+        const fingerIndices = FINGER_LOOKUP_INDICES[finger as FINGER];
+        const pip = this.keyPoints[fingerIndices[2]];
+        const dip = this.keyPoints[fingerIndices[3]];
+        const tip = this.keyPoints[fingerIndices[4]];
+
+        // console.log(finger, " - pip: ", pip);
+        // console.log(finger, " - dip: ", dip);
+        // console.log(finger, " - tip: ", tip);
+
+        const isCurledDownwards = this.isFingerCurledDown(pip, dip, tip);
+        console.log(finger, " - isCurledDownwards:", isCurledDownwards);
 
         //  6------<--    |   6-----<-    |   6----<---8   |    6 - Index_PIP
         //   \___7        |    \__7___8   |    \___7       |    7 - Index_DIP
         //        \__8    |               |                |    8 - Index_TIP
-        const isCurledRightSidewards = ((this.keyPoints[fingerIndeces[2]].y < this.keyPoints[fingerIndeces[3]].y)
-            && ((this.keyPoints[fingerIndeces[2]].y < this.keyPoints[fingerIndeces[4]].y)
-                || (this.keyPoints[fingerIndeces[4]].y < this.keyPoints[fingerIndeces[3]].y)
-            ))
-        return isCurledDownwards || isCurledLeftSidewards || isCurledRightSidewards;
+        const isCurledLeftSidewards = this.isFingerCurledLeft(pip, dip, tip);
+        console.log(finger, " - isCurledLeftSidewards:", isCurledLeftSidewards);
 
+        const isCurledRightSidewards = this.isFingerCurledRight(pip, dip, tip);
+        console.log(finger, " - isCurledRightSidewards:", isCurledRightSidewards);
+        return {
+            up: false,
+            down: isCurledDownwards,
+            left: isCurledLeftSidewards,
+            right: isCurledRightSidewards
+        }
     }
 
     /**
@@ -56,41 +150,41 @@ export class FingersClip {
      * Check below predicate for fourFingers (meaning except thumb).
      * - if all PIP.y > all DIP.y and all DIP.y > all TIP.y
      */
-    isFourFingersCurled(): boolean {
+    fourFingersCurledDirections() {
         if (this.keyPoints.length <= 0) {
             console.error("There are no predictions by handpose model. Please check if modal is loaded or not")
-            return false; // TODO throw error
+            return null; // TODO throw error
         }
-        const fourFingers = Object.keys(FINGER_LOOKUP_INDICES).filter((fingerName) => (fingerName as FINGER) !== "thumb");
-        console.log("curledDownwards");
-        // const curledDownwards = fourFingers.every(finger => {
-        //     const fingerIndeces = FINGER_LOOKUP_INDICES[finger as FINGER];
-        //     console.log(`${finger}:`, (this.keyPoints[fingerIndeces[2]].y < this.keyPoints[fingerIndeces[3]].y), (this.keyPoints[fingerIndeces[3]].y < this.keyPoints[fingerIndeces[4]].y));
-        //     return ((this.keyPoints[fingerIndeces[2]].y < this.keyPoints[fingerIndeces[3]].y)
-        //         && (this.keyPoints[fingerIndeces[3]].y < this.keyPoints[fingerIndeces[4]].y))
-        // })
-        // console.log("curledSideWards");
-        // const curledLeftSideWards = fourFingers.every(finger => {
-        //     const fingerIndeces = FINGER_LOOKUP_INDICES[finger as FINGER];
-        //     console.log(`${finger}:`, (this.keyPoints[fingerIndeces[2]].y < this.keyPoints[fingerIndeces[3]].y), (this.keyPoints[fingerIndeces[2]].y < this.keyPoints[fingerIndeces[4]].y));
-        //     return ((this.keyPoints[fingerIndeces[2]].y < this.keyPoints[fingerIndeces[3]].y)
-        //         && (this.keyPoints[fingerIndeces[2]].y < this.keyPoints[fingerIndeces[4]].y))
-        // })
-        // //  6------<--    |   6-----<-    |   6----<---8   |    6 - Index_PIP
-        // //   \___7        |    \__7___8   |    \___7       |    7 - Index_DIP
-        // //        \__8    |               |                |    8 - Index_TIP
-        // const curledRightSideWards = fourFingers.every(finger => {
-        //     const fingerIndeces = FINGER_LOOKUP_INDICES[finger as FINGER];
-        //     console.log(`${finger}:`, (this.keyPoints[fingerIndeces[2]].y < this.keyPoints[fingerIndeces[3]].y), (this.keyPoints[fingerIndeces[2]].y < this.keyPoints[fingerIndeces[4]].y));
-        //     return ((this.keyPoints[fingerIndeces[2]].y < this.keyPoints[fingerIndeces[3]].y)
-        //         && ((this.keyPoints[fingerIndeces[2]].y < this.keyPoints[fingerIndeces[4]].y)
-        //             || (this.keyPoints[fingerIndeces[4]].y < this.keyPoints[fingerIndeces[3]].y)
-        //         ))
-        // })
-        // return curledDownwards || curledLeftSideWards || curledRightSideWards;
-        return fourFingers.every(finger => {
-            return this.isFingerCurled(finger as FINGER);
-        })
+        return {
+            [FINGER_ENUM.indexFinger]: this.fingerCurledDirections(FINGER_ENUM.indexFinger),
+            [FINGER_ENUM.middleFinger]: this.fingerCurledDirections(FINGER_ENUM.middleFinger),
+            [FINGER_ENUM.ringFinger]: this.fingerCurledDirections(FINGER_ENUM.ringFinger),
+            [FINGER_ENUM.pinky]: this.fingerCurledDirections(FINGER_ENUM.pinky),
+        }
+    }
+    isFourFingersCurledDown() {
+        const fourFingers = this.fourFingersCurledDirections();
+        if (fourFingers) {
+            return (Object.values(fourFingers) as DIRECTION[]).every(direction => direction.down)
+        }
+        console.error("There are no predictions by handpose model. Please check if modal is loaded or not")
+        return false; // TODO throw error
+    }
+    isFourFingersCurledLeft() {
+        const fourFingers = this.fourFingersCurledDirections();
+        if (fourFingers) {
+            return (Object.values(fourFingers) as DIRECTION[]).every(direction => direction.left)
+        }
+        console.error("There are no predictions by handpose model. Please check if modal is loaded or not")
+        return false; // TODO throw error
+    }
+    isFourFingersCurledRight() {
+        const fourFingers = this.fourFingersCurledDirections();
+        if (fourFingers) {
+            return (Object.values(fourFingers) as DIRECTION[]).every(direction => direction.right)
+        }
+        console.error("There are no predictions by handpose model. Please check if modal is loaded or not")
+        return false; // TODO throw error
     }
     /**
      * 
@@ -198,7 +292,7 @@ export class FingersClip {
         }
     }
 
-    contains(point: handPoseDetection.Keypoint) {
+    containedInFourFingers(point: handPoseDetection.Keypoint) {
         const boundingBox = this.getBoundingBox();
         if (this.keyPoints.length > 0 && boundingBox)
             return point.x > boundingBox.left.x
@@ -210,6 +304,4 @@ export class FingersClip {
         return false; // TODO throw error
 
     }
-
-
 }
