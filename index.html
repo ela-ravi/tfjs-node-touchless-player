@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TypeScript Home Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f0f0f0;
+      text-align: center;
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    p {
+      color: #666;
+    }
+
+    #message-container {
+      margin-top: 30px;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background-color: #fff;
+      display: inline-block;
+      /* To center it */
+    }
+  </style>
+</head>
+
+<body>
+  <h1>My TypeScript-Powered Home Page</h1>
+  <p>This HTML is static, but TypeScript will add dynamic content below!</p>
+  <div style="display: flex; justify-content: space-around; flex-direction: column;">
+    <video id="video" controls width="640" height="360">
+      <source src="./video-out.mp4" type="video/mp4" />
+    </video>
+    <video id="mirror" controls width="640" height="360">
+      <!-- <source src="./video-out.mp4" type="video/mp4" /> -->
+    </video>
+  </div>
+  <canvas id="output" width="640" height="360"></canvas>
+
+  <script src="src/index.ts" type="module"></script>
+</body>
+
+</html>
