@@ -10,7 +10,9 @@
  */
 //  TODO: Work on handposes that should not work and initmate user to change like curled left all fingers (user might test feature to move backward) (Try to add threhold to indexfinger points x difference so that if its satisfied, go for backward only when index is straight left() )
 import * as handPoseDetection from "@tensorflow-models/hand-pose-detection";
-import { FINGER_LOOKUP_INDICES, FINGER, FINGER_ENUM, DIRECTIONS } from "./utils";
+import { FINGER_LOOKUP_INDICES } from "./utils";
+import { FINGER_ENUM } from "./enums";
+import type { FINGER, DIRECTIONS } from "./types";
 
 export class FingersClip {
     private keyPoints: handPoseDetection.Keypoint[];

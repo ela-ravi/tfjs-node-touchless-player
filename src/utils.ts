@@ -1,3 +1,4 @@
+import { GESTURES_ENUM } from "./enums";
 
 // Below constant is taken from node_modules/@tensorflow-models/hand-pose-detection/dist/constants.js
 const MEDIAPIPE_CONNECTED_KEYPOINTS_PAIRS = [
@@ -12,22 +13,32 @@ const FINGER_LOOKUP_INDICES = {
     ringFinger: [0, 13, 14, 15, 16],
     pinky: [0, 17, 18, 19, 20],
 } as const;
-// Our own enum
-enum FINGER_ENUM {
-    thumb = "thumb",
-    indexFinger = "indexFinger",
-    middleFinger = "middleFinger",
-    ringFinger = "ringFinger",
-    pinky = "pinky",
+
+
+const triggerAction = (gesture: GESTURES_ENUM, video: HTMLVideoElement, audio: HTMLAudioElement) => {
+    console.log(`Gesture detected: ${gesture}`);
+    audio.play(); // To inform user that a gesture is detected or an action is triggered (can be null gesture / action as well)
+    switch (gesture) {
+        case GESTURES_ENUM.play:
+            video.play();
+            break;
+        case GESTURES_ENUM.pause:
+            video.pause();
+            break;
+        case GESTURES_ENUM.volumeUp:
+            video.volume = Math.min(1, video.volume + 0.1);
+            break;
+        case GESTURES_ENUM.volumeDown:
+            video.volume = Math.max(0, video.volume - 0.1);
+            break;
+        case GESTURES_ENUM.forward:
+            video.currentTime += 5;
+            break;
+        case GESTURES_ENUM.backward:
+            video.currentTime -= 5;
+            break;
+    }
 }
 
-type FINGER = keyof typeof FINGER_LOOKUP_INDICES;
-type DIRECTIONS = {
-    up: boolean,
-    down: boolean,
-    left: boolean,
-    right: boolean
-}
 
-
-export { MEDIAPIPE_CONNECTED_KEYPOINTS_PAIRS, FINGER_LOOKUP_INDICES, FINGER, FINGER_ENUM, DIRECTIONS }
+export { MEDIAPIPE_CONNECTED_KEYPOINTS_PAIRS, FINGER_LOOKUP_INDICES, triggerAction }
