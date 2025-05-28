@@ -10,6 +10,16 @@ const vod = document.getElementById("video") as HTMLVideoElement;
 const live = document.getElementById("mirror") as HTMLVideoElement;
 // TODO: Check for Canvas support on curremt user browser
 const canvas = document.getElementById("output") as HTMLCanvasElement;
+// const select = document.getElementById("videos") as HTMLSelectElement;
+// select.addEventListener("change", (e: Event) => {
+//     const target = e.target as HTMLSelectElement;
+//     const selectedValue = target.value;
+//     const sourceElement = document.querySelector("source");
+//     if (sourceElement && selectedValue) {
+//         sourceElement.src = `./${selectedValue}.mp4`;
+//         vod.load(); // Reload the video element to reflect the new source
+//     }
+// })
 const ctx = canvas.getContext("2d");
 
 const model: handPoseDetection.SupportedModels = handPoseDetection.SupportedModels.MediaPipeHands;
@@ -52,9 +62,10 @@ async function detectHands(video: HTMLVideoElement) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         if (predictions.length > 0) {
             drawHand(predictions);
+            const handedness = predictions[0].handedness;
             const landmarks = predictions[0].keypoints;
-            const gesture = getGesture(landmarks);
-            console.log("getGesture:", gesture);
+            const gesture = getGesture(landmarks, handedness);
+            console.log("getGesture:", gesture, handedness);
             const now = Date.now();
             // if (gesture && now - gestureStart > 1000) {
             //     gestureStart = now;
@@ -74,29 +85,29 @@ async function detectHands(video: HTMLVideoElement) {
     requestAnimationFrame(() => detectHands(live));
 }
 
-function getGesture(landmarks: handPoseDetection.Keypoint[]) {
+function getGesture(landmarks: handPoseDetection.Keypoint[], handedness: handPoseDetection.Hand["handedness"]) {
 
     const thumbTip = landmarks[4];
-    const pinkyMCP = landmarks[17];
-    const fingersClip = new FingersClip(landmarks);
+    const fingersClip = new FingersClip(landmarks, handedness);
+    console.log("Hand:", fingersClip.getHandedness(), "\tFront:", fingersClip.isFront() ? "Front" : "Back");
 
     const isOpenPalm = () => {
         // TODO: try with array.every
         console.log("isOpenPalm:");
         // Thumb
-        if (!fingersClip.isFingerStraight(FINGER_ENUM.thumb)?.up || fingersClip.containedInFourFingers(thumbTip)) return false;
+        if (!fingersClip.fingerStraightDirections(FINGER_ENUM.thumb)?.up || fingersClip.containedInFourFingers(thumbTip)) return false;
         console.log("Thumb Straight up");
         // Index Finger
-        if (!fingersClip.isFingerStraight(FINGER_ENUM.indexFinger)?.up) return false;
+        if (!fingersClip.fingerStraightDirections(FINGER_ENUM.indexFinger)?.up) return false;
         console.log("Index Straight up");
         // Middle Finger
-        if (!fingersClip.isFingerStraight(FINGER_ENUM.middleFinger)?.up) return false;
+        if (!fingersClip.fingerStraightDirections(FINGER_ENUM.middleFinger)?.up) return false;
         console.log("Middle Straight up");
         // Ring Finger
-        if (!fingersClip.isFingerStraight(FINGER_ENUM.ringFinger)?.up) return false;
+        if (!fingersClip.fingerStraightDirections(FINGER_ENUM.ringFinger)?.up) return false;
         console.log("Ring Straight up");
         // Pinky Finger
-        const p = fingersClip.isFingerStraight(FINGER_ENUM.pinky)?.up;
+        const p = fingersClip.fingerStraightDirections(FINGER_ENUM.pinky)?.up;
         if (p)
             console.log("Pinky Straight up");
         return p;
@@ -110,36 +121,69 @@ function getGesture(landmarks: handPoseDetection.Keypoint[]) {
         return isFourFingersCurledDown && isThumbCurled;
     }
     const isThumbsUp = () => {
-        const isFourFingersCurledLeft = fingersClip.isFourFingersCurledLeft();
-        const isThumbUp = fingersClip.isFingerStraight(FINGER_ENUM.thumb)?.up && !fingersClip.containedInFourFingers(thumbTip);
-        console.log("isThumbsUp: ", isFourFingersCurledLeft, isThumbUp);
-        return isFourFingersCurledLeft && isThumbUp;
+        if (fingersClip.getHandedness() === "Right") {
+            const isFourFingersCurledLeft = fingersClip.isFourFingersCurledLeft();
+            const isThumbUp = fingersClip.fingerStraightDirections(FINGER_ENUM.thumb)?.up && !fingersClip.containedInFourFingers(thumbTip);
+            console.log(`${fingersClip.getHandedness()} isThumbsUp: `, isFourFingersCurledLeft, isThumbUp);
+            return isFourFingersCurledLeft && isThumbUp;
+        } else {
+            const isFourFingersCurledRight = fingersClip.isFourFingersCurledRight();
+            const isThumbUp = fingersClip.fingerStraightDirections(FINGER_ENUM.thumb)?.up && !fingersClip.containedInFourFingers(thumbTip);
+            console.log(`${fingersClip.getHandedness()} isThumbsUp: `, isFourFingersCurledRight, isThumbUp);
+            return isFourFingersCurledRight && isThumbUp;
+        }
     }
 
     const isThumbsDown = () => {
-        const isFourFingersCurledLeft = fingersClip.isFourFingersCurledLeft();
-        const isThumbDown = fingersClip.isFingerStraight(FINGER_ENUM.thumb)?.down && !fingersClip.containedInFourFingers(thumbTip)
-        console.log("isThumbsDown: ", isFourFingersCurledLeft, isThumbDown);
-        return isFourFingersCurledLeft && isThumbDown;
+        if (fingersClip.getHandedness() === "Right") {
+            const isFourFingersCurledLeft = fingersClip.isFourFingersCurledLeft();
+            const isThumbDown = fingersClip.fingerStraightDirections(FINGER_ENUM.thumb)?.down && !fingersClip.containedInFourFingers(thumbTip)
+            console.log(`${fingersClip.getHandedness()} isThumbsDown: `, isFourFingersCurledLeft, isThumbDown);
+            return isFourFingersCurledLeft && isThumbDown;
+        } else {
+            const isFourFingersCurledRight = fingersClip.isFourFingersCurledRight();
+            const isThumbDown = fingersClip.fingerStraightDirections(FINGER_ENUM.thumb)?.down && !fingersClip.containedInFourFingers(thumbTip)
+            console.log(`${fingersClip.getHandedness()} isThumbsDown: `, isFourFingersCurledRight, isThumbDown);
+            return isFourFingersCurledRight && isThumbDown;
+        }
     }
     const isPointLeft = () => {
         const threeFingers = [FINGER_ENUM.middleFinger, FINGER_ENUM.ringFinger, FINGER_ENUM.pinky];
-        const isThreeFingersCurled = threeFingers.every((finger) => {
-            return fingersClip.fingerCurledDirections(finger as FINGER)?.left
-        });
-        const isIndexPointLeft = fingersClip.isFingerStraight(FINGER_ENUM.indexFinger)?.left;
-        console.log("isPointLeft: ", isThreeFingersCurled, isIndexPointLeft);
-        return isThreeFingersCurled && isIndexPointLeft;
+        if (fingersClip.getHandedness() === "Right") {
+            const isThreeFingersCurledLeft = threeFingers.every((finger) => {
+                return fingersClip.fingerCurledDirections(finger as FINGER)?.left
+            });
+            const isIndexPointLeft = fingersClip.fingerStraightDirections(FINGER_ENUM.indexFinger)?.left;
+            console.log(`${fingersClip.getHandedness()} isPointLeft: `, isThreeFingersCurledLeft, isIndexPointLeft);
+            return isThreeFingersCurledLeft && isIndexPointLeft;
+        } else {
+            const isThreeFingersCurledLeft = threeFingers.every((finger) => {
+                return fingersClip.fingerCurledDirections(finger as FINGER)?.left
+            });
+            const isIndexPointLeft = fingersClip.fingerStraightDirections(FINGER_ENUM.indexFinger)?.left;
+            console.log(`${fingersClip.getHandedness()} isPointLeft: `, isThreeFingersCurledLeft, isIndexPointLeft);
+            return isThreeFingersCurledLeft && isIndexPointLeft;
+        }
     }
 
     const isPointRight = () => {
         const threeFingers = [FINGER_ENUM.middleFinger, FINGER_ENUM.ringFinger, FINGER_ENUM.pinky];
-        const isThreeFingersCurled = threeFingers.every((finger) => {
-            return fingersClip.fingerCurledDirections(finger as FINGER)?.right
-        });
-        const isIndexPointRight = fingersClip.isFingerStraight(FINGER_ENUM.indexFinger)?.right;
-        console.log("isPointRight: ", isThreeFingersCurled, isIndexPointRight);
-        return isThreeFingersCurled && isIndexPointRight;
+        if (fingersClip.getHandedness() === "Right") {
+
+            const isThreeFingersCurledRight = threeFingers.every((finger) => {
+                return fingersClip.fingerCurledDirections(finger as FINGER)?.right
+            });
+            const isIndexPointRight = fingersClip.fingerStraightDirections(FINGER_ENUM.indexFinger)?.right;
+            console.log(`${fingersClip.getHandedness()} isPointRight: `, isThreeFingersCurledRight, isIndexPointRight);
+            return isThreeFingersCurledRight && isIndexPointRight;
+        } else {
+            const isThreeFingersCurledRight = threeFingers.every((finger) => {
+                return fingersClip.fingerCurledDirections(finger as FINGER)?.right
+            });
+            const isIndexPointRight = fingersClip.fingerStraightDirections(FINGER_ENUM.indexFinger)?.right;
+            console.log(`${fingersClip.getHandedness()} isPointRight: `, isThreeFingersCurledRight, isIndexPointRight);
+            return isThreeFingersCurledRight && isIndexPointRight;
+        }
     }
 
     const openPalm = isOpenPalm();
