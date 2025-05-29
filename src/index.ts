@@ -18,6 +18,7 @@ const live = document.getElementById("mirror") as HTMLVideoElement;
 const canvas = document.getElementById("output") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d");
 const audioClick = document.getElementById("audio-click") as HTMLAudioElement;
+const gestureOutput = document.getElementById("gesture") as HTMLParagraphElement;
 
 // const select = document.getElementById("videos") as HTMLSelectElement;
 // select.addEventListener("change", (e: Event) => {
@@ -44,6 +45,7 @@ const initializeApp = async () => {
         console.log("Initializing Handpose detector");
         detector = await handPoseDetection.createDetector(model, modelConfig);
         console.log("HandPose Detector loaded");
+        gestureOutput.innerText = "Model Loaded";
         detectHands(live);
 
     } catch (e) {
@@ -65,6 +67,9 @@ const detectHands = async (video: HTMLVideoElement) => {
                 const landmarks = predictions[0].keypoints;
                 const gesture = getGesture(landmarks, handedness);
                 console.log("getGesture:", gesture, handedness);
+                if (gesture)
+                    gestureOutput.innerText = `${gesture} - ${handedness} hand`;
+
                 const now = Date.now();
 
                 const allowGestureChange = [GESTURES_ENUM.play, GESTURES_ENUM.pause].includes(lastGesture) ? lastGesture !== gesture : true;

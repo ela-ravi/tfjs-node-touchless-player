@@ -34,10 +34,8 @@
 </head>
 
 <body>
-  <h1>My TypeScript-Powered Home Page</h1>
-  <p>This HTML is static, but TypeScript will add dynamic content below!</p>
+  <h1>Tenforflow-Powered Touchless Video Player</h1>
   <div style="display: flex; justify-content: space-around; flex-direction: column;">
-    <label for="videos">Choose a video:</label>
     <!-- <select id="videos">
       <option value="video1">Video 1</option>
       <option value="cartoon">Cartoon</option>
@@ -45,12 +43,25 @@
     <video id="video" controls width="640" height="360">
       <source src="./assets/cartoon.mp4" type="video/mp4" />
     </video>
-    <video id="mirror" controls width="640" height="360">
+    <div style="display: flex;">
+      <video id="mirror" controls width="640" height="360">
+        <!-- <source src="./video-out.mp4" type="video/mp4" /> -->
+      </video>
       <audio id="audio-click" src="./assets/cool-click.mp3"></audio>
-      <!-- <source src="./video-out.mp4" type="video/mp4" /> -->
-    </video>
+      <div style="padding-left: 200px; width: calc(100vw - 640px)">
+        <p>Video Flipped Horizontally </p>
+        <p>Your Right = Computer's Left</p>
+        <p>Your Left = Computer's Right</p>
+        <p id="gesture" style="padding-top: 50px;
+          font-size: 32px;
+          color: green;
+          font-weight: bold;">
+          Model Loading ...
+        </p>
+      </div>
+    </div>
   </div>
-  <canvas id="output" width="640" height="360"></canvas>
+  <canvas id="output" width="640" height="360" style="position: absolute; top: 80px; left: 600px;"></canvas>
 
   <script src="src/index.ts" type="module"></script>
 </body>

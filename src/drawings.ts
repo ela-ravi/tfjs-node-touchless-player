@@ -18,11 +18,11 @@ const drawHand = (ctx: CanvasRenderingContext2D, predictions: handPoseDetection.
             ctx.strokeStyle = "red";
             ctx.arc(fingerPoint2.x, fingerPoint2.y, 2, 0, 2 * Math.PI)
             ctx.stroke();
-            if (index >= 4 && index <= 7) {
-                ctx.beginPath();
-                ctx.strokeStyle = "black";
-                ctx.strokeText(`${fingerPoint2.x.toFixed(0)}, ${fingerPoint2.y.toFixed(0)}`, fingerPoint2.x, fingerPoint2.y)
-            }
+            // if (index >= 4 && index <= 7) {
+            //     ctx.beginPath();
+            //     ctx.strokeStyle = "black";
+            //     ctx.strokeText(`${fingerPoint2.x.toFixed(0)}, ${fingerPoint2.y.toFixed(0)}`, fingerPoint2.x, fingerPoint2.y)
+            // }
         }
 
     })
